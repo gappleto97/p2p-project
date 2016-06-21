@@ -55,4 +55,4 @@ script:
   - if [ $Cov == 'true'  ]; then py.test -vv --cov=./py_src/ ./py_src/; fi
   - if [ $Cov == 'false' ]; then py.test -vv; fi
 after_success:
-  - if [ $Cov == 'true'  ]; then python -m coverage combine; codecov --token=d89f9bd9-27a3-4560-8dbb-39ee3ba020a5 --file .coverage; fi
+  - if [ $Cov == 'true'  ]; then python -m coverage combine; codecov --token=d89f9bd9-27a3-4560-8dbb-39ee3ba020a5; fi

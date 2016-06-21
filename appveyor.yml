@@ -92,4 +92,5 @@ build_script:
 
 on_success:
   - "%COV% combine"
+  - "%COV% xml"
   - "%RUN% -c \"import codecov; codecov.main(token='d89f9bd9-27a3-4560-8dbb-39ee3ba020a5')\""

@@ -1,17 +1,17 @@
+var BigInt = require('./BigInteger/BigInteger.js');
+var struct = require('./pack/bufferpack.js');
+var SHA = require('./SHA/src/sha.js');
+var zlib = require('./zlib/bin/node-zlib.js');
+
 function p2p() {
     "use strict";
     var m = this;
 
-    var BigInt = require('./BigInteger/BigInteger.js');
-    var struct = require('./pack/bufferpack.js');
-    var SHA = require('./SHA/src/sha.js');
-    var zlib = require('./zlib/bin/node-zlib.js');
-
-    if (!Array.prototype.last){
-        Array.prototype.last = function(){
+    if (!Array.prototype.last) {
+        Array.prototype.last = function() {
             return this[this.length - 1];
         };
-    };
+    }
 
     m.version = "0.2.1";
     m.build_num = "build.117"
@@ -19,7 +19,7 @@ function p2p() {
 
     // User salt generation pulled from: http://stackoverflow.com/a/2117523
     m.user_salt = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        var r = Math.random()*16|0, v = c === 'x' ? r : (r&0x3|0x8);
         return v.toString(16);
     });
 
@@ -70,7 +70,7 @@ function p2p() {
 
 
     m.compress = function(text, method) {
-        if (method == "gzip") {
+        if (method === "gzip") {
             return zlib.deflateSync(Buffer(text));
         }
         else {
@@ -80,7 +80,7 @@ function p2p() {
 
 
     m.decompress = function(text, method) {
-        if (method == "gzip") {
+        if (method === "gzip") {
             return zlib.inflateSync(Buffer(text));
         }
         else {
@@ -120,13 +120,10 @@ function p2p() {
         }
 
         static feed_string(protocol, string, sizeless, compressions) {
-            console.log("Sanitizing string")
             string = m.pathfinding_message.sanitize_string(string, sizeless)
-            console.log("Decompressing string")
             var compression_return = m.pathfinding_message.decompress_string(string, compressions)
             var compression_fail = compression_return[1]
             string = compression_return[0]
-            console.log("Processing string")
             var packets = m.pathfinding_message.process_string(string)
             var msg = new m.pathfinding_message(protocol, packets[0], packets[1], packets.slice(4), compressions)
             msg.time = m.from_base_58(packets[3])
@@ -172,7 +169,7 @@ function p2p() {
             function add(a, b) {
                 return a + b
             }
-            while (processed != expected) {
+            while (processed !== expected) {
                 pack_lens = pack_lens.concat(struct.unpack("!L", Buffer(string.substring(processed, processed+4))))
                 processed += 4
                 expected -= pack_lens.last()
@@ -189,7 +186,7 @@ function p2p() {
         get compression_used() {
             for (var i = 0; i < m.compression.length; i++) {
                 for (var j = 0; j < this.compression.length; j++) {
-                    if (m.compression[i] == this.compression[j]) {
+                    if (m.compression[i] === this.compression[j]) {
                         return m.compression[i]
                     }
                 }

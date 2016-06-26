@@ -235,7 +235,7 @@ class base_socket(object):
 
 class pathfinding_message(object):
     @classmethod
-    def feed_string(cls, string, sizeless=False, compressions=None):
+    def feed_string(cls, protocol, string, sizeless=False, compressions=None):
         """Constructs a pathfinding_message from a string or bytes object.
         Possible errors:
             AttributeError: Fed a non-string, non-bytes argument

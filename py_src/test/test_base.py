@@ -112,7 +112,7 @@ def pathfinding_message_constructor_validation(array):
         string = base.compress(msg.string[4:], method)
         string = struct.pack('!L', len(string)) + string
         msg.compression = [method]
-        comp = base.pathfinding_message.feed_string(string, False, [method])
+        comp = base.pathfinding_message.feed_string(base.default_protocol, string, False, [method])
         assert msg.string == string == comp.string
 
 def pathfinding_message_exceptions_validiation(array):
@@ -120,19 +120,19 @@ def pathfinding_message_exceptions_validiation(array):
     for method in base.compression:
         msg.compression = [method]
         try:
-            base.pathfinding_message.feed_string(msg.string, True, [method])
+            base.pathfinding_message.feed_string(base.default_protocol, msg.string, True, [method])
         except:
             pass
         else:  # pragma: no cover
             raise Exception("Erroneously parses sized message with sizeless: %s" % string)
         try:
-            base.pathfinding_message.feed_string(msg.string[4:], False, [method])
+            base.pathfinding_message.feed_string(base.default_protocol, msg.string[4:], False, [method])
         except:
             pass
         else:  # pragma: no cover
             raise Exception("Erroneously parses sizeless message with size %s" % string)
         try:
-            base.pathfinding_message.feed_string(msg.string)
+            base.pathfinding_message.feed_string(base.default_protocol, msg.string)
         except:
             pass
         else:  # pragma: no cover

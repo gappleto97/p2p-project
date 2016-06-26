@@ -17,7 +17,7 @@ class mesh_connection(base_connection):
         self.active = False
         reply_object = self
         try:
-            msg = pathfinding_message.feed_string(raw_msg, False, self.compression)
+            msg = pathfinding_message.feed_string(self.protocol, raw_msg, False, self.compression)
         except IndexError:
             self.__print__("Failed to decode message: %s. Expected compression: %s." % \
                             (raw_msg, intersect(compression, self.compression)[0]), level=1)

@@ -77,7 +77,7 @@ This class is used internally to deal with packet parsing from a socket level. I
 #### Constructor
 
 `pathfinding_message(protocol, msg_type, sender, payload, compressions=None)`
-`pathfinding_message.feed_string(string, sizeless=False, compressions=None)`
+`pathfinding_message.feed_string(protocol, string, sizeless=False, compressions=None)`
 
 * `protocol`: The [`protocol`](#protocol) this message uses
 * `msg_type`: The chief [`flag`](#flag) this message uses, to broadcast intent
@@ -113,7 +113,7 @@ This class is used internally to deal with packet parsing from a socket level. I
 
 #### Class Methods:
 
-* `feed_string(string, sizeless=False, compressions=None)`: Given a string or `bytes`, process this into a `pathfinding_message`. If compressions are enabled, you must provide a `list` of possible methods. If the size header is not included, you must specify this with `sizeless=True`. 
+* `feed_string(ptorocol, string, sizeless=False, compressions=None)`: Given a [`protocol`](#protocol), a string or `bytes`, process this into a `pathfinding_message`. If compressions are enabled, you must provide a `list` of possible methods. If the size header is not included, you must specify this with `sizeless=True`. 
      Possible errors:
 
      * `AttributeError`: Fed a non-string, non-`bytes` argument

@@ -1,3 +1,5 @@
+"""A peer-to-peer encrypted socket using RSA"""
+
 from __future__ import print_function
 import warnings, socket, struct, sys
 from threading import Thread
@@ -8,6 +10,7 @@ size_request = "Requesting key size".encode('utf-8')
 
 
 def int_to_bin(key):
+    """A method to convert an arbitrarily sized integer into binary data"""
     arr = []
     while key:
         arr = [key % 256] + arr
@@ -16,6 +19,7 @@ def int_to_bin(key):
 
 
 def bin_to_int(key):
+    """A method to convert an arbitrarily sized string into an integer from binary data"""
     if isinstance(key, int) and bytes != str:  # pragma: no cover
         key = bytes([key])
     arr = struct.unpack("!" + "B" * len(key), key)
@@ -27,9 +31,11 @@ def bin_to_int(key):
 
 
 def get_num_packets(msg, packet_size):
+    """Returns the number of packets a given message would take, given a packet size"""
     return len(msg) // packet_size + bool(len(msg) % packet_size)
 
 def construct_packets(msg, packet_size):
+    """Construct a list of packets for a given message and packet size"""
     num_packets = get_num_packets(msg, packet_size)
     while True:
         headers = int_to_bin(num_packets)
@@ -44,9 +50,11 @@ def construct_packets(msg, packet_size):
         num_packets = new_num_packets
 
 def charlimit(keysize):
+    """Returns the maximum characters/message for a given keysize"""
     return (256**4-1) * ((keysize // 8) - 11) - 259
 
 def best_hash(keysize):
+    """Returns the most-unique hash available to a given keysize"""
     if keysize >= 746:
         return 'SHA-512'
     elif keysize >= 618:
@@ -71,10 +79,12 @@ try:
     verify     = rsa.verify
     public_key = rsa.PublicKey
 
-    def sign(msg, key, hashop):
-        if not isinstance(msg, bytes):
-            msg = msg.encode()
-        return rsa.sign(msg, key, hashop)
+    def sign(message, priv_key, hash):
+        if not isinstance(message, bytes):
+            message = message.encode()
+        return rsa.sign(message, priv_key, hash)
+
+    sign.__doc__ = rsa.sign.__doc__
 
 except ImportError:
     try:

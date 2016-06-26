@@ -7,6 +7,7 @@
 * `version`: A string containing the major, minor, and patch release number. This version refers to the underlying protocol.
 * `build_num`: The build number associated with this version. This refers to the node and its policies.
 * `__version__`: A string containing both `version` and `build_num` separated by a `"+"`. This is guarunteed to be unique.
+* `version_info`: A `tuple` version of the above
 * `uses_RSA`: This value says whether it is using the underlying `rsa` module. If `None`, it means neither `rsa` nor any of its fallbacks could be imported. Currently `False` means it relies on `PyCrypto`, and `True` means it relies on `rsa`.
 * `if uses_RSA is not None`
     * `decryption_error`: The error a call to `decrypt` will throw if decryption of a given ciphertext fails

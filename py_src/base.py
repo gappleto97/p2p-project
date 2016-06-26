@@ -1,3 +1,5 @@
+"""A library to store common functions and protocol definitions"""
+
 from __future__ import print_function
 import bz2, hashlib, json, select, socket, struct, time, threading, traceback, uuid, zlib
 from collections import namedtuple, deque
@@ -6,11 +8,14 @@ version = "0.2.1"
 build_num = "build.117"
 
 class flags():
-    broadcast   = b'broadcast'
+    """A namespace to hold protocol-defined flags"""
+    # main flags
+    broadcast   = b'broadcast'  # also sub-flag
     waterfall   = b'waterfall'
-    whisper     = b'whisper'
+    whisper     = b'whisper'    # also sub-flag
     renegotiate = b'renegotiate'
 
+    # sub-flags
     handshake   = b'handshake'
     request     = b'request'
     response    = b'response'
@@ -18,6 +23,7 @@ class flags():
     peers       = b'peers'
     compression = b'compression'
 
+    # compression methods
     gzip = b'gzip'
     bz2  = b'bz2'
     lzma = b'lzma'
@@ -111,6 +117,7 @@ def get_lan_ip():
 
 
 class protocol(namedtuple("protocol", ['subnet', 'encryption'])):
+    """Defines service variables so that you can reject connections looking for a different service"""
     @property
     def id(self):
         h = hashlib.sha256(''.join([str(x) for x in self] + [version]).encode())
@@ -120,6 +127,7 @@ default_protocol = protocol('', "Plaintext")  # PKCS1_v1.5")
 
 
 class base_connection(object):
+    """The base class for a connection"""
     def __init__(self, sock, server, prot=default_protocol, outgoing=False):
         self.sock = sock
         self.server = server
@@ -164,6 +172,7 @@ class base_connection(object):
 
 
 class base_daemon(object):
+    """The base class for a daemon"""    
     def __init__(self, addr, port, server, prot=default_protocol):
         self.protocol = prot
         self.server = server
@@ -192,6 +201,7 @@ class base_daemon(object):
 
 
 class base_socket(object):
+    """The base class for a peer-to-peer socket"""
     def recv(self, quantity=1):
         """Receive 1 or several message objects. Returns none if none are present. Non-blocking."""
         if quantity != 1:
@@ -207,6 +217,7 @@ class base_socket(object):
 
     @property
     def status(self):
+        """Returns "Nominal" if all is going well, or a list of unexpected (Excpetion, traceback) tuples if not"""
         return self.daemon.exceptions or "Nominal"   
 
     @property
@@ -234,6 +245,7 @@ class base_socket(object):
 
 
 class pathfinding_message(object):
+    """An object used to build and parse protocol-defined message structures"""
     @classmethod
     def feed_string(cls, string, sizeless=False, compressions=None):
         """Constructs a pathfinding_message from a string or bytes object.
@@ -317,13 +329,15 @@ class pathfinding_message(object):
 
     @property
     def payload(self):
-        for i in range(len(self.__payload)):
-            if not isinstance(self.__payload[i], bytes):
-                self.__payload[i] = self.__payload[i].encode()
+        """Returns a list containing the message payload encoded as bytes"""
+        for i, val in enumerate(self.__payload):
+            if not isinstance(val, bytes):
+                self.__payload[i] = val.encode()
         return self.__payload
 
     @property
     def compression_used(self):
+        """Returns the compression method this message is using"""
         for method in intersect(compression, self.compression):
             return method
         return None
@@ -342,14 +356,16 @@ class pathfinding_message(object):
 
     @property
     def packets(self):
+        """Returns the full list of packets in this message encoded as bytes, excluding the header"""
         meta = [self.msg_type, self.sender, self.id, self.time_58]
-        for i in range(len(meta)):
-            if not isinstance(meta[i], bytes):
-                meta[i] = meta[i].encode()
+        for i, val in enumerate(meta):
+            if not isinstance(val, bytes):
+                meta[i] = val.encode()
         return meta + self.payload
 
     @property
     def __non_len_string(self):
+        """Returns a bytes object containing the entire message, excepting the total length header"""
         packets = self.packets
         header = struct.pack("!" + str(len(packets)) + "L", 
                                     *[len(x) for x in packets])
@@ -369,10 +385,12 @@ class pathfinding_message(object):
 
     @property
     def len(self):
+        """Return the struct-encoded length header"""
         return struct.pack("!L", self.__len__())
 
 
 class message(object):
+    """An object which gets returned to a user, containing all necessary information to parse and reply to a message"""
     def __init__(self, msg, server):
         if not isinstance(msg, pathfinding_message):
             raise TypeError("message must be passed a pathfinding_message")
@@ -381,18 +399,22 @@ class message(object):
 
     @property
     def time(self):
+        """The time this message was sent at"""
         return self.msg.time    
 
     @property
     def sender(self):
+        """The ID of this message's sender"""
         return self.msg.sender
 
     @property
     def protocol(self):
+        """The protocol this message was sent under"""
         return self.msg.protocol
     
     @property
     def id(self):
+        """This message's ID"""
         return self.msg.id
 
     @property

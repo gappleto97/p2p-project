@@ -10,13 +10,13 @@ matrix:
     - language: generic
       python: 2.7
       os: osx
-      env: Cov='true' pyver=2.7 pydist=homebrew
+      env: Cov='true' pyver=2.7 pydist=macpython
 #          pydist=macports
 #          pydist=homebrew
     - language: generic
       python: 3.3
       os: osx
-      env: Cov='true' pyver=3.3 pydist=macports
+      env: Cov='true' pyver=3.3 pydist=homebrew
 #          pydist=macports
 #          pydist=homebrew
     - language: generic

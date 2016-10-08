@@ -17,7 +17,7 @@ matrix:
       python: 3.3
       os: osx
       env: Cov='true' pyver=3.3 pydist=macpython
-      osx_image: beta-xcode6.1
+      osx_image: beta-xcode6.2
 #          pydist=macports
 #          pydist=homebrew
     - language: generic

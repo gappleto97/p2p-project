@@ -1,4 +1,5 @@
 IF DEFINED PIP (
+    SET VS90COMNTOOLS=C:\Program Files\Microsoft Visual Studio 10.0\Common7\Tools\
     ECHO %PYTHON% %PYTHON_VERSION%%APPVEYOR_BUILD_FOLDER%
     set HOME=%APPVEYOR_BUILD_FOLDER%
     %PYPY%

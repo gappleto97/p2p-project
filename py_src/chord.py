@@ -17,9 +17,9 @@ try:
 except:
     from .base import protocol
 
-from .base import (flags, compression, to_base_58, from_base_58,
-                base_connection, message, base_daemon, base_socket,
-                InternalMessage, json_compressions)
+from .base import (
+    flags, compression, to_base_58, from_base_58, base_connection, message,
+    base_daemon, base_socket, InternalMessage, json_compressions)
 from .utils import (getUTC, get_socket, intersect, awaiting_value, most_common)
 
 default_protocol = protocol('chord', "Plaintext")  # SSL")
@@ -32,12 +32,15 @@ if sys.version_info >= (3,):
 def distance(a, b, limit):
     """This is a clockwise ring distance function.
     It depends on a globally defined k, the key size.
-    The largest possible node id is limit (or 2**k)."""
+    The largest possible node id is limit (or 2**k).
+    """
     return (b - a) % limit
 
 
 class chord_connection(base_connection):
-    """The class for chord connection abstraction. This inherits from :py:class:`py2p.base.base_connection`"""
+    """The class for chord connection abstraction.
+    This inherits from :py:class:`py2p.base.base_connection`
+    """
     def found_terminator(self):
         """This method is called when the expected amount of data is received
 
@@ -47,8 +50,10 @@ class chord_connection(base_connection):
         try:
             msg = super(chord_connection, self).found_terminator()
         except (IndexError, struct.error):
-            self.__print__("Failed to decode message: %s. Expected compression: %s." % \
-                            (raw_msg, intersect(compression, self.compression)[0]), level=1)
+            self.__print__(
+                "Failed to decode message: %s. Expected compression: %s."
+                % (raw_msg, intersect(compression, self.compression)[0]),
+                level=1)
             self.send(flags.renegotiate, flags.compression, json.dumps([]))
             self.send(flags.renegotiate, flags.resend)
             return
@@ -68,11 +73,14 @@ class chord_connection(base_connection):
 
 
 class chord_daemon(base_daemon):
-    """The class for chord daemon. This inherits from :py:class:`py2p.base.base_daemon`"""
+    """The class for chord daemon.
+    This inherits from :py:class:`py2p.base.base_daemon`
+    """
     def mainloop(self):
         """Daemon thread which handles all incoming data and connections"""
         while self.main_thread.is_alive() and self.alive:
-            conns = list(self.server.routing_table.values()) + self.server.awaiting_ids
+            conns = (list(self.server.routing_table.values())
+                     + self.server.awaiting_ids)
             for handler in select.select(conns + [self.sock], [], [], 0.01)[0]:
                 if handler == self.sock:
                     self.handle_accept()
@@ -102,43 +110,65 @@ class chord_daemon(base_daemon):
         try:
             while not handler.find_terminator():
                 if not handler.collect_incoming_data(handler.sock.recv(1)):
-                    self.__print__("disconnecting node %s while in loop" % handler.id, level=6)
+                    self.__print__(
+                        "disconnecting node %s while in loop" % handler.id,
+                        level=6)
                     self.server.disconnect(handler)
                     return
             handler.found_terminator()
         except socket.timeout:  # pragma: no cover
             return  # Shouldn't happen with select, but if it does...
         except Exception as e:
-            if isinstance(e, socket.error) and e.args[0] in (9, 104, 10053, 10054, 10058):
+            if (isinstance(e, socket.error) and
+                    e.args[0] in (9, 104, 10053, 10054, 10058)):
                 node_id = handler.id
                 if not node_id:
                     node_id = repr(handler)
-                self.__print__("Node %s has disconnected from the network" % node_id, level=1)
+                self.__print__(
+                    "Node %s has disconnected from the network" % node_id,
+                    level=1)
             else:
-                self.__print__("There was an unhandled exception with peer id %s. This peer is being disconnected, and the relevant exception is added to the debug queue. If you'd like to report this, please post a copy of your chord_socket.status to github.com/gappleto97/p2p-project/issues." % handler.id, level=0)
+                self.__print__(
+                    "There was an unhandled exception with peer id %s. This "
+                    "peer is being disconnected, and the relevant exception "
+                    "is added to the debug queue. If you'd like to report th"
+                    "is, please post a copy of your chord_socket.status to g"
+                    "ithub.com/gappleto97/p2p-project/issues." % handler.id,
+                    level=0)
                 self.exceptions.append((e, traceback.format_exc()))
             self.server.disconnect(handler)
 
 
 class chord_socket(base_socket):
-    """The class for chord socket abstraction. This inherits from :py:class:`py2p.base.base_socket`"""
-    def __init__(self, addr, port, k=6, prot=default_protocol, out_addr=None, debug_level=0):
+    """The class for chord socket abstraction.
+    This inherits from :py:class:`py2p.base.base_socket`
+    """
+    def __init__(self, addr, port, k=6, prot=default_protocol, out_addr=None,
+                 debug_level=0):
         """Initializes a chord socket
 
         Args:
             addr:           The address you wish to bind to (ie: "192.168.1.1")
             port:           The port you wish to bind to (ie: 44565)
-            k:              This number indicates the node counts the network can support. You must have > (k+1) nodes.
-                                You may only have up to 2**k nodes, but at that count you will likely get ID conficts.
-            prot:           The protocol you wish to operate over, defined by a :py:class:`py2p.base.protocol` object
-            out_addr:       Your outward facing address. Only needed if you're connecting over the internet. If you
-                                use '0.0.0.0' for the addr argument, this will automatically be set to your LAN address.
-            debug_level:    The verbosity you want this socket to use when printing event data
+            k:              This number indicates the node counts the network
+                                can support. You must have > (k+1) nodes.
+                                You may only have up to 2**k nodes, but at
+                                that count you will likely get ID conflicts.
+            prot:           The protocol you wish to operate over, defined by
+                                a :py:class:`py2p.base.protocol` object
+            out_addr:       Your outward facing address. Only needed if you're
+                                connecting over the internet. If you use
+                                '0.0.0.0' for the addr argument, this will
+                                automatically be set to your LAN address.
+            debug_level:    The verbosity you want this socket to use when
+                                printing event data
 
         Raises:
-            socket.error:   The address you wanted could not be bound, or is otherwise used
+            socket.error:   The address you wanted could not be bound, or is
+                                otherwise used
         """
-        super(chord_socket, self).__init__(addr, port, prot, out_addr, debug_level)
+        super(chord_socket, self).__init__(
+            addr, port, prot, out_addr, debug_level)
         self.k = k  # 160  # SHA-1 namespace
         self.limit = 2**k
         self.id_10 = from_base_58(self.id) % self.limit
@@ -156,25 +186,33 @@ class chord_socket(base_socket):
         self.next = self
         self.prev = self
         self.leeching = True
-        warnings.warn("This network configuration supports %s total nodes and requires a theoretical minimum of %s nodes" % (min(self.limit, 2**160), self.k), RuntimeWarning, stacklevel=2)
+        warnings.warn(
+            "This network configuration supports %s total nodes and requires"
+            " a theoretical minimum of %s nodes"
+            % (min(self.limit, 2**160), self.k), RuntimeWarning, stacklevel=2)
 
     @property
     def addr(self):
-        """An alternate binding for ``self.out_addr``, in order to better handle self-references in the daemon thread"""
+        """An alternate binding for ``self.out_addr``, in order to better
+        handle self-references in the daemon thread
+        """
         return self.out_addr
 
     def __findFinger__(self, key):
-        current=self
+        current = self
         for x in xrange(self.k):
-            if distance(current.id_10, key, self.limit) > \
-               distance(self.routing_table.get(x, self).id_10, key, self.limit):
-                current=self.routing_table.get(x, self)
+            if (distance(current.id_10, key, self.limit)
+                    > distance(self.routing_table.get(x, self).id_10, key,
+                               self.limit)):
+                current = self.routing_table.get(x, self)
         return current
 
     def __get_fingers(self):
         """Returns a finger table for your peer"""
-        peer_list = []
-        peer_list = list(set(((tuple(node.addr), node.id.decode()) for node in list(self.routing_table.values()) + self.awaiting_ids if node.addr)))
+        peer_list = list(set((
+            (tuple(node.addr), node.id.decode()) for node in
+            list(self.routing_table.values()) + self.awaiting_ids if node.addr
+        )))
         if self.next is not self:
             peer_list.append((self.next.addr, self.next.id.decode()))
         if self.prev is not self:
@@ -182,18 +220,19 @@ class chord_socket(base_socket):
         return peer_list
 
     def set_fingers(self, handler):
-        """Given a handler, check to see if it's the closest connection to an ideal slot.
+        """Given a handler, check to see if it's the closest connection to an
+        ideal slot.
 
-        In other words, if it's the closest ID you know of to a power of two distance from you,
-        add it to your connection table.
+        In other words, if it's the closest ID you know of to a power of two
+        distance from you, add it to your connection table.
 
         Args:
             handler: A :py:class:`~py2p.chord.chord_connection`
         """
         for x in xrange(self.k):
             goal = self.id_10 + 2**x
-            if distance(self.__findFinger__(goal).id_10, goal, self.limit) \
-                > distance(handler.id_10, goal, self.limit):
+            if (distance(self.__findFinger__(goal).id_10, goal, self.limit)
+                    > distance(handler.id_10, goal, self.limit)):
                 former = self.__findFinger__(goal)
                 self.routing_table[x] = handler
                 if former not in self.routing_table.values():
@@ -208,26 +247,32 @@ class chord_socket(base_socket):
         return True
 
     def update_fingers(self):
-        """Updates your connection table, and sends a request for more peers whenever ``getUTC() % 5 == 0 and not self.is_saturated()``
+        """Updates your connection table, and sends a request for more peers
+        whenever ``getUTC() % 5 == 0 and not self.is_saturated()``
 
         Is this efficient? No.
 
         Will it be fixed? Yes. See the warning up top.
         """
-        should_request = (not self.leeching) and (not (getUTC() % 5)) and (not self.is_saturated())
-        for handler in list(self.routing_table.values()) + self.awaiting_ids + self.predecessors:
+        should_request = ((not self.leeching) and (not (getUTC() % 5))
+                          and (not self.is_saturated()))
+        for handler in (list(self.routing_table.values())
+                        + self.awaiting_ids + self.predecessors):
             if handler.id:
                 self.set_fingers(handler)
             if should_request:
                 handler.send(flags.whisper, flags.request, b'*')
 
     def handle_msg(self, msg, conn):
-        """Decides how to handle various message types, allowing some to be handled automatically"""
+        """Decides how to handle various message types, allowing some to be
+        handled automatically
+        """
         if not super(chord_socket, self).handle_msg(msg, conn):
             self.__print__("Ignoring message with invalid subflag", level=4)
 
     def __handle_handshake(self, msg, handler):
-        """This callback is used to deal with handshake signals. Its two primary jobs are:
+        """This callback is used to deal with handshake signals. Its two
+        primary jobs are:
 
              - reject connections seeking a different network
              - set connection state
@@ -249,20 +294,25 @@ class chord_socket(base_socket):
                 self._send_handshake(handler)
                 handler.addr = json.loads(packets[3].decode())
                 handler.compression = json.loads(packets[4].decode())
-                handler.compression = [algo.encode() for algo in handler.compression]
-                self.__print__("Compression methods changed to %s" % repr(handler.compression), level=4)
+                handler.compression = [
+                    algo.encode() for algo in handler.compression]
+                self.__print__("Compression methods changed to %s"
+                               % repr(handler.compression), level=4)
                 self.set_fingers(handler)
-                handler.send(flags.whisper, flags.peers, json.dumps(self.__get_fingers()))
-                if distance(self.id_10, self.next.id_10-1, self.limit) \
-                    > distance(self.id_10, handler.id_10, self.limit):
+                handler.send(flags.whisper, flags.peers,
+                             json.dumps(self.__get_fingers()))
+                if (distance(self.id_10, self.next.id_10-1, self.limit)
+                        > distance(self.id_10, handler.id_10, self.limit)):
                     self.next = handler
-                if distance(self.prev.id_10+1, self.id_10, self.limit) \
-                    > distance(handler.id_10, self.id_10, self.limit):
+                if (distance(self.prev.id_10+1, self.id_10, self.limit)
+                        > distance(handler.id_10, self.id_10, self.limit)):
                     self.prev = handler
             return True
 
     def __handle_peers(self, msg, handler):
-        """This callback is used to deal with peer signals. Its primary jobs is to connect to the given peers, if they are a better connection given the chord schema
+        """This callback is used to deal with peer signals. Its primary job
+        is to connect to the given peers, if they are a better connection
+        given the chord schema
 
              Args:
                 msg:        A :py:class:`~py2p.base.message`
@@ -278,21 +328,26 @@ class chord_socket(base_socket):
                 key = from_base_58(key)
                 for index in xrange(self.k):
                     goal = self.id_10 + 2**index
-                    self.__print__("%s : %s" % (distance(self.__findFinger__(goal).id_10, goal, self.limit),
-                                                distance(key, goal, self.limit)), level=5)
-                    if distance(self.__findFinger__(goal).id_10, goal, self.limit) \
-                            > distance(key, goal, self.limit):
+                    self.__print__("%s : %s"
+                                   % (distance(self.__findFinger__(goal).id_10,
+                                               goal, self.limit),
+                                      distance(key, goal, self.limit)),
+                                   level=5)
+                    if (distance(self.__findFinger__(goal).id_10, goal,
+                                 self.limit)
+                            > distance(key, goal, self.limit)):
                         self.__connect(*addr)
-                if distance(self.id_10, self.next.id_10-1, self.limit) \
-                    > distance(self.id_10, key, self.limit):
+                if (distance(self.id_10, self.next.id_10-1, self.limit)
+                        > distance(self.id_10, key, self.limit)):
                     self.__connect(*addr)
-                if distance(self.prev.id_10+1, self.id_10, self.limit) \
-                    > distance(key, self.id_10, self.limit):
+                if (distance(self.prev.id_10+1, self.id_10, self.limit)
+                        > distance(key, self.id_10, self.limit)):
                     self.__connect(*addr)
             return True
 
     def __handle_response(self, msg, handler):
-        """This callback is used to deal with response signals. Its two primary jobs are:
+        """This callback is used to deal with response signals. Its two
+        primary jobs are:
 
              - if it was your request, send the deferred message
              - if it was someone else's request, relay the information
@@ -306,7 +361,8 @@ class chord_socket(base_socket):
         """
         packets = msg.packets
         if packets[0] == flags.response:
-            self.__print__("Response received for request id %s" % packets[1], level=1)
+            self.__print__(
+                "Response received for request id %s" % packets[1], level=1)
             if self.requests.get((packets[1], packets[2])):
                 value = self.requests.get((packets[1], packets[2]))
                 value.value = packets[3]
@@ -315,7 +371,8 @@ class chord_socket(base_socket):
             return True
 
     def __handle_request(self, msg, handler):
-        """This callback is used to deal with request signals. Its three primary jobs are:
+        """This callback is used to deal with request signals. Its three
+         primary jobs are:
 
              - respond with a peers signal if packets[1] is ``'*'``
              - if you know the ID requested, respond to it
@@ -331,7 +388,8 @@ class chord_socket(base_socket):
         packets = msg.packets
         if packets[0] == flags.request:
             if packets[1] == b'*':
-                handler.send(flags.whisper, flags.peers, json.dumps(self.__get_fingers()))
+                handler.send(flags.whisper, flags.peers,
+                             json.dumps(self.__get_fingers()))
             else:
                 goal = from_base_58(packets[1])
                 node = self.__findFinger__(goal)
@@ -341,14 +399,17 @@ class chord_socket(base_socket):
                     ret.callback = handler
                     self.requests.update({(packets[1], msg.id): ret})
                 else:
-                    handler.send(flags.whisper, flags.response, packets[1], packets[2], self.out_addr)
+                    handler.send(flags.whisper, flags.response, packets[1],
+                                 packets[2], self.out_addr)
             return True
 
     def __handle_retrieve(self, msg, handler):
-        """This callback is used to deal with data retrieval signals. Its two primary jobs are:
+        """This callback is used to deal with data retrieval signals. Its
+        two primary jobs are:
 
              - respond with data you possess
-             - if you don't possess it, make a request with your closest peer to that key
+             - if you don't possess it, make a request with your closest
+             peer to that key
 
              Args:
                 msg:        A :py:class:`~py2p.base.message`
@@ -360,17 +421,21 @@ class chord_socket(base_socket):
         packets = msg.packets
         if packets[0] == flags.retrieve:
             if packets[1] in hashes:
-                val = self.__lookup(packets[1], from_base_58(packets[2]), handler)
+                val = self.__lookup(
+                    packets[1], from_base_58(packets[2]), handler)
                 if isinstance(val.value, str):
                     self.__print__(val.value)
-                    handler.send(flags.whisper, flags.response, packets[1], packets[2], val.value)
+                    handler.send(flags.whisper, flags.response, packets[1],
+                                 packets[2], val.value)
                 return True
 
     def __handle_store(self, msg, handler):
-        """This callback is used to deal with data storage signals. Its two primary jobs are:
+        """This callback is used to deal with data storage signals. Its two
+        primary jobs are:
 
              - store data in keys you're responsible for
-             - if you aren't responsible, make a request with your closest peer to that key
+             - if you aren't responsible, make a request with your closest
+             peer to that key
 
              Args:
                 msg:        A :py:class:`~py2p.base.message`
@@ -388,10 +453,11 @@ class chord_socket(base_socket):
 
     def dump_data(self, start, end=None):
         """Args:
-            start:  An :py:class:`int` which indicates the start of the desired key range.
-                        ``0`` will get all data.
-            end:    An :py:class:`int` which indicates the end of the desired key range.
-                        ``None`` will get all data. (default: ``None``)
+            start:  An :py:class:`int` which indicates the start of the
+                        desired key range. ``0`` will get all data.
+            end:    An :py:class:`int` which indicates the end of the
+                        desired key range. ``None`` will get all data.
+                        (default: ``None``)
 
         Returns:
             A nested :py:class:`dict` containing your data from start to end
@@ -400,17 +466,18 @@ class chord_socket(base_socket):
         ret = dict(((method, {}) for method in hashes))
         for method in self.data:
             for key in self.data[method]:
-                if key >= start % self.limit and (not end or key < end % self.limit):
+                if (key >= start % self.limit and
+                        (not end or key < end % self.limit)):
                     print(method, key, self.data)
                     ret[method].update({key: self.data[method][key]})
         return ret
 
     def connect(self, addr, port):
-        """This function connects you to a specific node in the overall network.
-        Connecting to one node *should* connect you to the rest of the network,
-        however if you connect to the wrong subnet, the handshake failure involved
-        is silent. You can check this by looking at the truthiness of this objects
-        routing table. Example:
+        """This function connects you to a specific node in the overall
+        network. Connecting to one node *should* connect you to the rest of
+        the network, however if you connect to the wrong subnet, the handshake
+        failure involved is silent. You can check this by looking at the
+        truthiness of this objects routing table. Example:
 
         .. code:: python
 
@@ -418,17 +485,20 @@ class chord_socket(base_socket):
            >>> conn.connect('localhost', 5555)
            >>> conn.join()
            >>> # do some other setup for your program
-           >>> if (!conn.routing_table):
+           >>> if not conn.routing_table:
            ...     conn.connect('localhost', 6666)  # any fallback address
            ...     conn.join()
 
         Args:
            addr: A string address
            port: A positive, integral port
-           id:   A string-like object which represents the expected ID of this node
+           id:   A string-like object which represents the expected ID of
+                     this node
         """
-        self.__print__("Attempting connection to %s:%s" % (addr, port), level=1)
-        if socket.getaddrinfo(addr, port)[0] == socket.getaddrinfo(*self.out_addr)[0]:
+        self.__print__(
+            "Attempting connection to %s:%s" % (addr, port), level=1)
+        if (socket.getaddrinfo(addr, port)[0]
+                == socket.getaddrinfo(*self.out_addr)[0]):
             self.__print__("Connection already established", level=1)
             return False
         conn = get_socket(self.protocol, False)
@@ -445,8 +515,8 @@ class chord_socket(base_socket):
             handler: A :py:class:`~py2p.chord.chord_connection`
         """
         json_out_addr = '["{}", {}]'.format(*self.out_addr)
-        handler.send(flags.whisper, flags.handshake, self.id, \
-                     self.protocol.id + to_base_58(self.k), \
+        handler.send(flags.whisper, flags.handshake, self.id,
+                     self.protocol.id + to_base_58(self.k),
                      json_out_addr, json_compressions)
 
     def __connect(self, addr, port):
@@ -467,11 +537,14 @@ class chord_socket(base_socket):
         """Tells the node to start seeding the chord table"""
         # for handler in self.awaiting_ids:
         self.leeching = False
-        handler = random.choice(self.awaiting_ids or list(self.routing_table.values()))
+        handler = random.choice(
+            self.awaiting_ids or list(self.routing_table.values()))
         self._send_handshake(handler)
 
     def unjoin(self):
-        """Tells the node to stop seeding the chord table, and dumps the data to the proper nodes"""
+        """Tells the node to stop seeding the chord table, and dumps the
+        data to the proper nodes
+        """
         self.leeching = True
         temp_data = self.data
         self.data = dict(((method, dict()) for method in hashes))
@@ -518,8 +591,10 @@ class chord_socket(base_socket):
             The value at said key
 
         Raises:
-            socket.timeout: If the request goes partly-unanswered for >=10 seconds
-            KeyError:       If the request is made for a key with no agreed-upon value
+            socket.timeout: If the request goes partly-unanswered for
+                                >= 10 seconds
+            KeyError:       If the request is made for a key with no
+                                agreed-upon value
         """
         if not isinstance(key, (bytes, bytearray)):
             key = str(key).encode()
@@ -551,7 +626,8 @@ class chord_socket(base_socket):
         if node in (self, None):
             self.data[method].update({key: value})
         else:
-            node.send(flags.whisper, flags.store, method, to_base_58(key), value)
+            node.send(
+                flags.whisper, flags.store, method, to_base_58(key), value)
 
     def store(self, key, value):
         """Updates the value at a given key.
@@ -560,10 +636,10 @@ class chord_socket(base_socket):
         updates the value in all of them.
 
         Args:
-            key:    The key that you wish to update. Must be a :py:class:`str` or
-                        :py:class:`bytes`-like object
-            value:  The value you wish to put at this key. Must be a :py:class:`str`
-                        or :py:class:`bytes`-like object
+            key:    The key that you wish to update. Must be a
+                        :py:class:`str` or :py:class:`bytes`-like object
+            value:  The value you wish to put at this key. Must be a
+                        :py:class:`str` or :py:class:`bytes`-like object
         """
         if not isinstance(key, (bytes, bytearray)):
             key = str(key).encode()
@@ -580,13 +656,13 @@ class chord_socket(base_socket):
     def update(self, update_dict):
         """Equivalent to :py:meth:`dict.update`
 
-        This calls :py:meth:`.chord_socket.store` for each key/value pair in the
-        given dictionary.
+        This calls :py:meth:`.chord_socket.store` for each key/value pair in
+        the given dictionary.
 
         Args:
-            update_dict: A :py:class:`dict`-like object to extract key/value pairs from.
-                            Key and value be a :py:class:`str` or :py:class:`bytes`-like
-                            object
+            update_dict: A :py:class:`dict`-like object to extract key/value
+                            pairs from. Key and value be a :py:class:`str` or
+                            :py:class:`bytes`-like object
         """
         for key in update_dict:
             value = update_dict[key]
@@ -601,7 +677,8 @@ class chord_socket(base_socket):
         node_id = handler.id
         if not node_id:
             node_id = repr(handler)
-        self.__print__("Connection to node %s has been closed" % node_id, level=1)
+        self.__print__(
+            "Connection to node %s has been closed" % node_id, level=1)
         if handler in self.awaiting_ids:
             self.awaiting_ids.remove(handler)
         elif handler in self.routing_table.values():

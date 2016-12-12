@@ -1,7 +1,5 @@
-from __future__ import print_function
-from __future__ import absolute_import
+from __future__ import print_function, absolute_import
 
-import inspect
 import json
 import random
 import select
@@ -14,17 +12,18 @@ from collections import deque
 
 try:
     from .cbase import protocol
-except:
-    from .base import protocol
-from .base import (flags, compression, to_base_58, from_base_58,
-                base_connection, message, base_daemon, base_socket,
-                InternalMessage, json_compressions)
+except ImportError:
+    from .base import Protocol
+
+from .base import (Flags, compression, from_base_58,
+                   BaseConnection, Message, BaseDaemon, BaseSocket,
+                   json_compressions)
 from .utils import getUTC, get_socket, intersect
 
 max_outgoing = 4
 default_protocol = protocol('mesh', "Plaintext")  # SSL")
 
-class mesh_connection(base_connection):
+class MeshConnection(BaseConnection):
     """The class for mesh connection abstraction. This inherits from :py:class:`py2p.base.base_connection`"""
     def send(self, msg_type, *args, **kargs):
         """Sends a message through its connection.
@@ -39,7 +38,7 @@ class mesh_connection(base_connection):
         Returns:
             the :py:class:`~py2p.base.InternalMessage` object you just sent, or None if the sending was unsuccessful
         """
-        msg = super(mesh_connection, self).send(msg_type, *args, **kargs)
+        msg = super(MeshConnection, self).send(msg_type, *args, **kargs)
         if msg and (msg.id, msg.time) not in self.server.waterfalls:
             self.server.waterfalls.appendleft((msg.id, msg.time))
 
@@ -50,12 +49,12 @@ class mesh_connection(base_connection):
             ``None``
         """
         try:
-            msg = super(mesh_connection, self).found_terminator()
+            msg = super(MeshConnection, self).found_terminator()
         except (IndexError, struct.error):
             self.__print__("Failed to decode message. Expected first compression of: %s." % \
                             intersect(compression, self.compression), level=1)
-            self.send(flags.renegotiate, flags.compression, json.dumps([]))
-            self.send(flags.renegotiate, flags.resend)
+            self.send(Flags.renegotiate, Flags.compression, json.dumps([]))
+            self.send(Flags.renegotiate, Flags.resend)
             return
         packets = msg.packets
         self.__print__("Message received: %s" % packets, level=1)
@@ -63,7 +62,7 @@ class mesh_connection(base_connection):
             return
         elif self.handle_renegotiate(packets):
             return
-        self.server.handle_msg(message(msg, self.server), self)
+        self.server.handle_msg(Message(msg, self.server), self)
 
     def handle_waterfall(self, msg, packets):
         """This method determines whether this message has been previously received or not.
@@ -81,17 +80,17 @@ class mesh_connection(base_connection):
         Returns:
             Either ``True`` or ``None``
         """
-        if packets[0] == flags.broadcast:
+        if packets[0] == Flags.broadcast:
             if from_base_58(packets[3]) < getUTC() - 60:
                 self.__print__("Waterfall expired", level=2)
                 return True
-            elif not self.server.waterfall(message(msg, self.server)):
+            elif not self.server.waterfall(Message(msg, self.server)):
                 self.__print__("Waterfall already captured", level=2)
                 return True
             self.__print__("New waterfall received. Proceeding as normal", level=2)
 
 
-class mesh_daemon(base_daemon):
+class MeshDaemon(BaseDaemon):
     """The class for mesh daemon. This inherits from :py:class:`py2p.base.base_daemon`"""
     def mainloop(self):
         """Daemon thread which handles all incoming data and connections"""
@@ -114,7 +113,7 @@ class mesh_daemon(base_daemon):
         try:
             conn, addr = self.sock.accept()
             self.__print__('Incoming connection from %s' % repr(addr), level=1)
-            handler = mesh_connection(conn, self.server)
+            handler = MeshConnection(conn, self.server)
             self.server._send_handshake(handler)
             handler.sock.settimeout(1)
             self.server.awaiting_ids.append(handler)
@@ -146,7 +145,7 @@ class mesh_daemon(base_daemon):
             self.server.request_peers()
 
 
-class mesh_socket(base_socket):
+class MeshSocket(BaseSocket):
     """The class for mesh socket abstraction. This inherits from :py:class:`py2p.base.base_socket`"""
     def __init__(self, addr, port, prot=default_protocol, out_addr=None, debug_level=0):
         """Initializes a mesh socket
@@ -163,11 +162,11 @@ class mesh_socket(base_socket):
         Raises:
             socket.error:   The address you wanted could not be bound, or is otherwise used
         """
-        super(mesh_socket, self).__init__(addr, port, prot, out_addr, debug_level)
+        super(MeshSocket, self).__init__(addr, port, prot, out_addr, debug_level)
         self.requests = {}          # Metadata about message replies where you aren't connected to the sender
         self.waterfalls = deque()   # Metadata of messages to waterfall
         self.queue = deque()        # Queue of received messages. Access through recv()
-        self.daemon = mesh_daemon(addr, port, self)
+        self.daemon = MeshDaemon(addr, port, self)
         self.register_handler(self.__handle_handshake)
         self.register_handler(self.__handle_peers)
         self.register_handler(self.__handle_response)
@@ -185,8 +184,8 @@ class mesh_socket(base_socket):
 
     def handle_msg(self, msg, conn):
         """Decides how to handle various message types, allowing some to be handled automatically"""
-        if not super(mesh_socket, self).handle_msg(msg, conn):
-            if msg.packets[0] in [flags.whisper, flags.broadcast]:
+        if not super(MeshSocket, self).handle_msg(msg, conn):
+            if msg.packets[0] in [Flags.whisper, Flags.broadcast]:
                 self.queue.appendleft(msg)
             else:
                 self.__print__("Ignoring message with invalid subflag", level=4)
@@ -204,7 +203,7 @@ class mesh_socket(base_socket):
             handler: A :py:class:`~py2p.mesh.mesh_connection`
         """
         json_out_addr = '["{}", {}]'.format(*self.out_addr)
-        handler.send(flags.whisper, flags.handshake, self.id, self.protocol.id, \
+        handler.send(Flags.whisper, Flags.handshake, self.id, self.protocol.id, \
                      json_out_addr, json_compressions)
 
     def __resolve_connection_conflict(self, handler, h_id):
@@ -239,7 +238,7 @@ class mesh_socket(base_socket):
     def _send_handshake_response(self, handler):
         """Shortcut method to send a handshake response. This method is extracted from :py:meth:`.__handle_handshake`
         in order to allow cleaner inheritence from :py:class:`py2p.sync.sync_socket`"""
-        handler.send(flags.whisper, flags.peers, json.dumps(self.__get_peer_list()))
+        handler.send(Flags.whisper, Flags.peers, json.dumps(self.__get_peer_list()))
 
     def __handle_handshake(self, msg, handler):
         """This callback is used to deal with handshake signals. Its three primary jobs are:
@@ -256,7 +255,7 @@ class mesh_socket(base_socket):
                 Either ``True`` or ``None``
         """
         packets = msg.packets
-        if packets[0] == flags.handshake:
+        if packets[0] == Flags.handshake:
             if packets[2] != self.protocol.id:
                 self.__print__("Connected to peer on wrong subnet. ID: %s" % packets[2], level=2)
                 self.disconnect(handler)
@@ -286,13 +285,13 @@ class mesh_socket(base_socket):
                 Either ``True`` or ``None``
         """
         packets = msg.packets
-        if packets[0] == flags.peers:
+        if packets[0] == Flags.peers:
             new_peers = json.loads(packets[1].decode())
             for addr, id in new_peers:
                 if len(self.outgoing) < max_outgoing:
                     try:
                         self.connect(addr[0], addr[1], id.encode())
-                    except:  # pragma: no cover
+                    except Exception:  # pragma: no cover
                         self.__print__("Could not connect to %s because\n%s" % (addr, traceback.format_exc()), level=1)
                         continue
             return True
@@ -311,7 +310,7 @@ class mesh_socket(base_socket):
                 Either ``True`` or ``None``
         """
         packets = msg.packets
-        if packets[0] == flags.response:
+        if packets[0] == Flags.response:
             self.__print__("Response received for request id %s" % packets[1], level=1)
             if self.requests.get(packets[1]):
                 addr = json.loads(packets[2].decode())
@@ -337,11 +336,11 @@ class mesh_socket(base_socket):
                 Either ``True`` or ``None``
         """
         packets = msg.packets
-        if packets[0] == flags.request:
+        if packets[0] == Flags.request:
             if packets[1] == b'*':
-                handler.send(flags.whisper, flags.peers, json.dumps(self.__get_peer_list()))
+                handler.send(Flags.whisper, Flags.peers, json.dumps(self.__get_peer_list()))
             elif self.routing_table.get(packets[2]):
-                handler.send(flags.broadcast, flags.response, packets[1], json.dumps([self.routing_table.get(packets[2]).addr, packets[2].decode()]))
+                handler.send(Flags.broadcast, Flags.response, packets[1], json.dumps([self.routing_table.get(packets[2]).addr, packets[2].decode()]))
             return True
 
     def send(self, *args, **kargs):
@@ -359,8 +358,8 @@ class mesh_socket(base_socket):
             and more specifically, it **MUST** be either ``broadcast`` or ``whisper``. The only other valid flags are ``waterfall`` and ``renegotiate``,
             but these are **RESERVED** and must **NOT** be used.
         """
-        send_type = kargs.pop('type', flags.broadcast)
-        main_flag = kargs.pop('flag', flags.broadcast)
+        send_type = kargs.pop('type', Flags.broadcast)
+        main_flag = kargs.pop('flag', Flags.broadcast)
         # map(methodcaller('send', 'broadcast', 'broadcast', *args), self.routing_table.values())
         handlers = list(self.routing_table.values())
         for handler in handlers:
@@ -424,7 +423,7 @@ class mesh_socket(base_socket):
         conn = get_socket(self.protocol, False)
         conn.settimeout(1)
         conn.connect((addr, port))
-        handler = mesh_connection(conn, self, outgoing=True)
+        handler = MeshConnection(conn, self, outgoing=True)
         self._send_handshake(handler)
         if id:
             self.routing_table.update({id: handler})
@@ -447,12 +446,12 @@ class mesh_socket(base_socket):
             self.routing_table.pop(handler.id)
         try:
             handler.sock.shutdown(socket.SHUT_RDWR)
-        except:
+        except Exception:
             pass
 
     def request_peers(self):
         """Requests your peers' routing tables"""
-        self.send('*', type=flags.request, flag=flags.whisper)
+        self.send('*', type=Flags.request, flag=Flags.whisper)
 
     def recv(self, quantity=1):
         """This function has two behaviors depending on whether quantity is truthy.

@@ -18,7 +18,7 @@ try:
         xrange = range
 
     def test_flags():
-        bf = base.flags
+        bf = base.Flags
         cf = cbase.flags
         assert bf.reserved == cf.reserved
 

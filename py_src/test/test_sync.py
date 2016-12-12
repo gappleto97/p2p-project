@@ -9,7 +9,7 @@ import time
 import pytest
 
 from .. import sync
-from ..base import flags
+from ..base import Flags
 
 from .test_mesh import close_all_nodes
 
@@ -20,14 +20,14 @@ if sys.version_info >= (3, ):
 def storage_validation(iters, start_port, num_nodes, encryption, leasing):
     for i in xrange(iters):
         print("----------------------Test start----------------------")
-        nodes = [sync.sync_socket('localhost', start_port + i*num_nodes,
-                                  prot=sync.protocol('', encryption),
-                                  debug_level=5, leasing=leasing)]
+        nodes = [sync.SyncSocket('localhost', start_port + i * num_nodes,
+                                 prot=sync.Protocol('', encryption),
+                                 debug_level=5, leasing=leasing)]
         nodes[0].set('store', b"store")
         for j in xrange(1, num_nodes):
-            new_node = sync.sync_socket('localhost', start_port + i*num_nodes + j,
-                                        prot=sync.protocol('', encryption),
-                                        debug_level=5, leasing=leasing)
+            new_node = sync.SyncSocket('localhost', start_port + i * num_nodes + j,
+                                       prot=sync.Protocol('', encryption),
+                                       debug_level=5, leasing=leasing)
             nodes[-1].connect('localhost', start_port + i*num_nodes + j)
             nodes.append(new_node)
             time.sleep(0.5)

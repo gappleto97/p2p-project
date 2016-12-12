@@ -61,9 +61,9 @@ def test_InternalMessage(iters=500, impl=base):
 
 
 def InternalMessage_constructor_validation(array, impl):
-    msg = impl.InternalMessage(base.flags.broadcast, u'\xff', array)
+    msg = impl.InternalMessage(base.Flags.broadcast, u'\xff', array)
     assert array == msg.payload
-    assert msg.packets == [base.flags.broadcast, u'\xff'.encode('utf-8'), msg.id, msg.time_58] + array
+    assert msg.packets == [base.Flags.broadcast, u'\xff'.encode('utf-8'), msg.id, msg.time_58] + array
     p_hash = hashlib.sha384(b''.join(array + [msg.time_58]))
     assert base.to_base_58(int(p_hash.hexdigest(), 16)) == msg.id
     assert impl.InternalMessage.feed_string(msg.string).id == msg.id
@@ -80,7 +80,7 @@ def InternalMessage_constructor_validation(array, impl):
 
 
 def InternalMessage_exceptions_validiation(array, impl):
-    msg = impl.InternalMessage(base.flags.broadcast, 'TEST SENDER', array)
+    msg = impl.InternalMessage(base.Flags.broadcast, 'TEST SENDER', array)
     for method in impl.compression:
         msg.compression = [method]
         with pytest.raises(Exception):
@@ -98,7 +98,7 @@ def test_protocol(iters=200, impl=base):
         sub = str(uuid.uuid4())
         enc = str(uuid.uuid4())
         print("constructing")
-        test = impl.protocol(sub, enc)
+        test = impl.Protocol(sub, enc)
         print("testing subnet equality")
         assert test.subnet == test[0] == sub
         print("testing encryption equality")
@@ -112,8 +112,8 @@ def test_message_sans_network(iters=1000):
     for _ in range(iters):
         sen = str(uuid.uuid4())
         pac = gen_random_list(36, 10)
-        base_msg = base.InternalMessage(base.flags.broadcast, sen, pac)
-        test = base.message(base_msg, None)
+        base_msg = base.InternalMessage(base.Flags.broadcast, sen, pac)
+        test = base.Message(base_msg, None)
         assert test.packets == pac
         assert test.msg == base_msg
         assert test.sender == sen.encode()

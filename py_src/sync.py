@@ -1,21 +1,21 @@
 from . import mesh
 from .utils import (getUTC, sanitize_packet)
-from .base import (flags, to_base_58, from_base_58)
+from .base import (Flags, to_base_58, from_base_58)
 
 try:
     from .cbase import protocol
-except:
-    from .base import protocol
+except ImportError:
+    from .base import Protocol
 
 from collections import namedtuple
 
 default_protocol = protocol('sync', "Plaintext")  # SSL")
 
-class metatuple(namedtuple('meta', ['owner', 'timestamp'])):
+class Metatuple(namedtuple('meta', ['owner', 'timestamp'])):
     """This class is used to store metadata for a particular key"""
     pass
 
-class sync_socket(mesh.mesh_socket):
+class SyncSocket(mesh.MeshSocket):
     """This class is used to sync dictionaries between programs. It extends :py:class:`py2p.mesh.mesh_socket`
 
     Because of this inheritence, this can also be used as an alert network
@@ -25,9 +25,9 @@ class sync_socket(mesh.mesh_socket):
 
     This may be turned off by adding ``leasing=False`` to the constructor."""
     def __init__(self, addr, port, prot=default_protocol, out_addr=None, debug_level=0, leasing=True):
-        protocol_used = protocol(prot[0] + str(int(leasing)), prot[1])
+        protocol_used = Protocol(prot[0] + str(int(leasing)), prot[1])
         self.__leasing = leasing
-        super(sync_socket, self).__init__(addr, port, protocol_used, out_addr, debug_level)
+        super(SyncSocket, self).__init__(addr, port, protocol_used, out_addr, debug_level)
         self.data = {}
         self.metadata = {}
         self.register_handler(self.__handle_store)
@@ -65,10 +65,10 @@ class sync_socket(mesh.mesh_socket):
     def _send_handshake_response(self, handler):
         """Shortcut method to send a handshake response. This method is extracted from :py:meth:`.__handle_handshake`
         in order to allow cleaner inheritence from :py:class:`py2p.sync.sync_socket`"""
-        super(sync_socket, self)._send_handshake_response(handler)
+        super(SyncSocket, self)._send_handshake_response(handler)
         for key in self:
             meta = self.metadata[key]
-            handler.send(flags.whisper, flags.store, key, self[key], meta.owner, to_base_58(meta.timestamp))
+            handler.send(Flags.whisper, Flags.store, key, self[key], meta.owner, to_base_58(meta.timestamp))
 
     def __handle_store(self, msg, handler):
         """This callback is used to deal with data storage signals. Its two primary jobs are:
@@ -84,24 +84,24 @@ class sync_socket(mesh.mesh_socket):
                 Either ``True`` or ``None``
         """
         packets = msg.packets
-        if packets[0] == flags.store:
-            meta = metatuple(msg.sender, msg.time)
+        if packets[0] == Flags.store:
+            meta = Metatuple(msg.sender, msg.time)
             if len(packets) == 5:
                 if self.data.get(packets[1]):
                     return
-                meta = metatuple(packets[3], from_base_58(packets[4]))
+                meta = Metatuple(packets[3], from_base_58(packets[4]))
             self.__store(packets[1], packets[2], meta, error=False)
             return True
 
     def __setitem__(self, key, data):
-        new_meta = metatuple(self.id, getUTC())
+        new_meta = Metatuple(self.id, getUTC())
         key = sanitize_packet(key)
         data = sanitize_packet(data)
         self.__store(key, data, new_meta)
         if data is None:
-            self.send(key, '', type=flags.store)
+            self.send(key, '', type=Flags.store)
         else:
-            self.send(key, data, type=flags.store)
+            self.send(key, data, type=Flags.store)
 
     def set(self, key, data):
         """Updates the value at a given key.

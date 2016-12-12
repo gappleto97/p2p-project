@@ -81,7 +81,6 @@ def get_socket(server_side):
         An SSL socket object
     """
     if server_side:
-        names = (None, None)
         with NamedTemporaryFile(delete=False, suffix=".cert") as cert_file:
             with NamedTemporaryFile(delete=False, suffix=".key") as key_file:
                 generate_self_signed_cert(cert_file, key_file)

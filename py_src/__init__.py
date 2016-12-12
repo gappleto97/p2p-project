@@ -5,10 +5,10 @@ In this module:
     Constants
 
       * __version__: A string containing the major, minor, and patch release
-                        number.
+                        number
       * version_info: A tuple version of the above
-      * protocol_version: A string containing the major and minor release number.
-                            This refers to the underlying protocol
+      * protocol_version: A string containing the major and minor release
+                            number. This refers to the underlying protocol.
       * node_policy_version: A string containing the build number associated
                                 with this version. This refers to the node
                                 and its policies.
@@ -35,8 +35,8 @@ Submodules:
     * test:        Unit tests for this library
 """
 
-from .base import protocol, version
-from .mesh import mesh_socket
+from .base import Protocol, version
+from .mesh import MeshSocket
 # from .chord import chord_socket
 # from .kademlia import kademlia_socket
 
@@ -58,7 +58,8 @@ def bootstrap(socket_type, proto, addr, port, *args, **kargs):
     #     ret.connect(addr, port)
     # return ret
 
-__all__ = ["mesh", "chord", "kademlia", "base", "ssl_wrapper"]
+# __all__ = ["mesh", "chord", "kademlia", "base", "ssl_wrapper"]
+__all__ = ["mesh", "base"]
 
 try:
     import cbase

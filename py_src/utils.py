@@ -1,12 +1,7 @@
-from __future__ import print_function
-from __future__ import with_statement
+from __future__ import print_function, with_statement
 
-import base64
 import calendar
-import os
-import shutil
 import socket
-import tempfile
 import time
 
 try:
@@ -14,15 +9,19 @@ try:
 except ImportError:
     import pickle
 
+
 def sanitize_packet(packet):
-    """Function to sanitize a packet for pathfinding_message serialization, or dict keying"""
+    """Function to sanitize a packet for pathfinding_message serialization,
+     or dict keying
+     """
     if isinstance(packet, type(u'')):
         return packet.encode('utf-8')
     elif not isinstance(packet, (bytes, bytearray)):
         return packet.encode('raw_unicode_escape')
     return packet
 
-def intersect(*args):  # returns list
+
+def intersect(*args):
     """Finds the intersection of several iterables
 
     Args:
@@ -51,7 +50,7 @@ def get_lan_ip():
         # doesn't even have to be reachable
         s.connect(('8.8.8.8', 23))
         IP = s.getsockname()[0]
-    except:
+    except Exception:
         IP = '127.0.0.1'
     finally:
         s.shutdown(socket.SHUT_RDWR)
@@ -71,7 +70,8 @@ def get_socket(protocol, serverside=False):
 
     Args:
         protocol:   A py2p.base.protocol object
-        serverside: Whether you are the server end of a connection (default: False)
+        serverside: Whether you are the server end of a connection
+                    (default: False)
 
     Raises:
         ValueError: If your protocol object has an unknown encryption method
@@ -88,15 +88,16 @@ def get_socket(protocol, serverside=False):
         raise ValueError("Unkown encryption method")
 
 
-class awaiting_value(object):
+class AwaitingValue(object):
     """Proxy object for an asynchronously retrieved item"""
     def __init__(self, value=-1):
         self.value = value
         self.callback = False
 
     def callback_method(self, method, key):
-        from .base import flags
-        self.callback.send(flags.whisper, flags.response, method, key, self.value)
+        from .base import Flags
+        self.callback.send(Flags.whisper, Flags.response,
+                           method, key, self.value)
 
     def __repr__(self):
         return "<" + repr(self.value) + ">"
@@ -112,11 +113,12 @@ def most_common(tmp):
         The most common element in the iterable
 
     Warning:
-        If there are multiple elements which share the same count, it will return a random one.
+        If there are multiple elements which share the same count,
+        it will return a random one.
     """
     lst = []
     for item in tmp:
-        if isinstance(item, awaiting_value):
+        if isinstance(item, AwaitingValue):
             lst.append(item.value)
         else:
             lst.append(item)
